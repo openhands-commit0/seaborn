@@ -34,22 +34,13 @@ try:
 except ImportError:
     from .external.kde import gaussian_kde
     _no_scipy = True
-
 from .algorithms import bootstrap
 from .utils import _check_argument
 
-
 class KDE:
     """Univariate and bivariate kernel density estimator."""
-    def __init__(
-        self, *,
-        bw_method=None,
-        bw_adjust=1,
-        gridsize=200,
-        cut=3,
-        clip=None,
-        cumulative=False,
-    ):
+
+    def __init__(self, *, bw_method=None, bw_adjust=1, gridsize=200, cut=3, clip=None, cumulative=False):
         """Initialize the estimator with its parameters.
 
         Parameters
@@ -73,119 +64,44 @@ class KDE:
 
         """
         if clip is None:
-            clip = None, None
-
+            clip = (None, None)
         self.bw_method = bw_method
         self.bw_adjust = bw_adjust
         self.gridsize = gridsize
         self.cut = cut
         self.clip = clip
         self.cumulative = cumulative
-
         if cumulative and _no_scipy:
-            raise RuntimeError("Cumulative KDE evaluation requires scipy")
-
+            raise RuntimeError('Cumulative KDE evaluation requires scipy')
         self.support = None
 
     def _define_support_grid(self, x, bw, cut, clip, gridsize):
         """Create the grid of evaluation points depending for vector x."""
-        clip_lo = -np.inf if clip[0] is None else clip[0]
-        clip_hi = +np.inf if clip[1] is None else clip[1]
-        gridmin = max(x.min() - bw * cut, clip_lo)
-        gridmax = min(x.max() + bw * cut, clip_hi)
-        return np.linspace(gridmin, gridmax, gridsize)
+        pass
 
     def _define_support_univariate(self, x, weights):
         """Create a 1D grid of evaluation points."""
-        kde = self._fit(x, weights)
-        bw = np.sqrt(kde.covariance.squeeze())
-        grid = self._define_support_grid(
-            x, bw, self.cut, self.clip, self.gridsize
-        )
-        return grid
+        pass
 
     def _define_support_bivariate(self, x1, x2, weights):
         """Create a 2D grid of evaluation points."""
-        clip = self.clip
-        if clip[0] is None or np.isscalar(clip[0]):
-            clip = (clip, clip)
-
-        kde = self._fit([x1, x2], weights)
-        bw = np.sqrt(np.diag(kde.covariance).squeeze())
-
-        grid1 = self._define_support_grid(
-            x1, bw[0], self.cut, clip[0], self.gridsize
-        )
-        grid2 = self._define_support_grid(
-            x2, bw[1], self.cut, clip[1], self.gridsize
-        )
-
-        return grid1, grid2
+        pass
 
     def define_support(self, x1, x2=None, weights=None, cache=True):
         """Create the evaluation grid for a given data set."""
-        if x2 is None:
-            support = self._define_support_univariate(x1, weights)
-        else:
-            support = self._define_support_bivariate(x1, x2, weights)
-
-        if cache:
-            self.support = support
-
-        return support
+        pass
 
     def _fit(self, fit_data, weights=None):
         """Fit the scipy kde while adding bw_adjust logic and version check."""
-        fit_kws = {"bw_method": self.bw_method}
-        if weights is not None:
-            fit_kws["weights"] = weights
-
-        kde = gaussian_kde(fit_data, **fit_kws)
-        kde.set_bandwidth(kde.factor * self.bw_adjust)
-
-        return kde
+        pass
 
     def _eval_univariate(self, x, weights=None):
         """Fit and evaluate a univariate on univariate data."""
-        support = self.support
-        if support is None:
-            support = self.define_support(x, cache=False)
-
-        kde = self._fit(x, weights)
-
-        if self.cumulative:
-            s_0 = support[0]
-            density = np.array([
-                kde.integrate_box_1d(s_0, s_i) for s_i in support
-            ])
-        else:
-            density = kde(support)
-
-        return density, support
+        pass
 
     def _eval_bivariate(self, x1, x2, weights=None):
         """Fit and evaluate a univariate on bivariate data."""
-        support = self.support
-        if support is None:
-            support = self.define_support(x1, x2, cache=False)
-
-        kde = self._fit([x1, x2], weights)
-
-        if self.cumulative:
-
-            grid1, grid2 = support
-            density = np.zeros((grid1.size, grid2.size))
-            p0 = grid1.min(), grid2.min()
-            for i, xi in enumerate(grid1):
-                for j, xj in enumerate(grid2):
-                    density[i, j] = kde.integrate_box(p0, (xi, xj))
-
-        else:
-
-            xx1, xx2 = np.meshgrid(*support)
-            density = kde([xx1.ravel(), xx2.ravel()]).reshape(xx1.shape)
-
-        return density, support
+        pass
 
     def __call__(self, x1, x2=None, weights=None):
         """Fit and evaluate on univariate or bivariate data."""
@@ -194,20 +110,10 @@ class KDE:
         else:
             return self._eval_bivariate(x1, x2, weights)
 
-
-# Note: we no longer use this for univariate histograms in histplot,
-# preferring _stats.Hist. We'll deprecate this once we have a bivariate Stat class.
 class Histogram:
     """Univariate and bivariate histogram estimator."""
-    def __init__(
-        self,
-        stat="count",
-        bins="auto",
-        binwidth=None,
-        binrange=None,
-        discrete=False,
-        cumulative=False,
-    ):
+
+    def __init__(self, stat='count', bins='auto', binwidth=None, binrange=None, discrete=False, cumulative=False):
         """Initialize the estimator with its parameters.
 
         Parameters
@@ -238,158 +144,31 @@ class Histogram:
             If True, return the cumulative statistic.
 
         """
-        stat_choices = [
-            "count", "frequency", "density", "probability", "proportion", "percent",
-        ]
-        _check_argument("stat", stat_choices, stat)
-
+        stat_choices = ['count', 'frequency', 'density', 'probability', 'proportion', 'percent']
+        _check_argument('stat', stat_choices, stat)
         self.stat = stat
         self.bins = bins
         self.binwidth = binwidth
         self.binrange = binrange
         self.discrete = discrete
         self.cumulative = cumulative
-
         self.bin_kws = None
 
     def _define_bin_edges(self, x, weights, bins, binwidth, binrange, discrete):
         """Inner function that takes bin parameters as arguments."""
-        if binrange is None:
-            start, stop = x.min(), x.max()
-        else:
-            start, stop = binrange
-
-        if discrete:
-            bin_edges = np.arange(start - .5, stop + 1.5)
-        elif binwidth is not None:
-            step = binwidth
-            bin_edges = np.arange(start, stop + step, step)
-            # Handle roundoff error (maybe there is a less clumsy way?)
-            if bin_edges.max() < stop or len(bin_edges) < 2:
-                bin_edges = np.append(bin_edges, bin_edges.max() + step)
-        else:
-            bin_edges = np.histogram_bin_edges(
-                x, bins, binrange, weights,
-            )
-        return bin_edges
+        pass
 
     def define_bin_params(self, x1, x2=None, weights=None, cache=True):
         """Given data, return numpy.histogram parameters to define bins."""
-        if x2 is None:
-
-            bin_edges = self._define_bin_edges(
-                x1, weights, self.bins, self.binwidth, self.binrange, self.discrete,
-            )
-
-            if isinstance(self.bins, (str, Number)):
-                n_bins = len(bin_edges) - 1
-                bin_range = bin_edges.min(), bin_edges.max()
-                bin_kws = dict(bins=n_bins, range=bin_range)
-            else:
-                bin_kws = dict(bins=bin_edges)
-
-        else:
-
-            bin_edges = []
-            for i, x in enumerate([x1, x2]):
-
-                # Resolve out whether bin parameters are shared
-                # or specific to each variable
-
-                bins = self.bins
-                if not bins or isinstance(bins, (str, Number)):
-                    pass
-                elif isinstance(bins[i], str):
-                    bins = bins[i]
-                elif len(bins) == 2:
-                    bins = bins[i]
-
-                binwidth = self.binwidth
-                if binwidth is None:
-                    pass
-                elif not isinstance(binwidth, Number):
-                    binwidth = binwidth[i]
-
-                binrange = self.binrange
-                if binrange is None:
-                    pass
-                elif not isinstance(binrange[0], Number):
-                    binrange = binrange[i]
-
-                discrete = self.discrete
-                if not isinstance(discrete, bool):
-                    discrete = discrete[i]
-
-                # Define the bins for this variable
-
-                bin_edges.append(self._define_bin_edges(
-                    x, weights, bins, binwidth, binrange, discrete,
-                ))
-
-            bin_kws = dict(bins=tuple(bin_edges))
-
-        if cache:
-            self.bin_kws = bin_kws
-
-        return bin_kws
+        pass
 
     def _eval_bivariate(self, x1, x2, weights):
         """Inner function for histogram of two variables."""
-        bin_kws = self.bin_kws
-        if bin_kws is None:
-            bin_kws = self.define_bin_params(x1, x2, cache=False)
-
-        density = self.stat == "density"
-
-        hist, *bin_edges = np.histogram2d(
-            x1, x2, **bin_kws, weights=weights, density=density
-        )
-
-        area = np.outer(
-            np.diff(bin_edges[0]),
-            np.diff(bin_edges[1]),
-        )
-
-        if self.stat == "probability" or self.stat == "proportion":
-            hist = hist.astype(float) / hist.sum()
-        elif self.stat == "percent":
-            hist = hist.astype(float) / hist.sum() * 100
-        elif self.stat == "frequency":
-            hist = hist.astype(float) / area
-
-        if self.cumulative:
-            if self.stat in ["density", "frequency"]:
-                hist = (hist * area).cumsum(axis=0).cumsum(axis=1)
-            else:
-                hist = hist.cumsum(axis=0).cumsum(axis=1)
-
-        return hist, bin_edges
+        pass
 
     def _eval_univariate(self, x, weights):
         """Inner function for histogram of one variable."""
-        bin_kws = self.bin_kws
-        if bin_kws is None:
-            bin_kws = self.define_bin_params(x, weights=weights, cache=False)
-
-        density = self.stat == "density"
-        hist, bin_edges = np.histogram(
-            x, **bin_kws, weights=weights, density=density,
-        )
-
-        if self.stat == "probability" or self.stat == "proportion":
-            hist = hist.astype(float) / hist.sum()
-        elif self.stat == "percent":
-            hist = hist.astype(float) / hist.sum() * 100
-        elif self.stat == "frequency":
-            hist = hist.astype(float) / np.diff(bin_edges)
-
-        if self.cumulative:
-            if self.stat in ["density", "frequency"]:
-                hist = (hist * np.diff(bin_edges)).cumsum()
-            else:
-                hist = hist.cumsum()
-
-        return hist, bin_edges
+        pass
 
     def __call__(self, x1, x2=None, weights=None):
         """Count the occurrences in each bin, maybe normalize."""
@@ -398,10 +177,10 @@ class Histogram:
         else:
             return self._eval_bivariate(x1, x2, weights)
 
-
 class ECDF:
     """Univariate empirical cumulative distribution estimator."""
-    def __init__(self, stat="proportion", complementary=False):
+
+    def __init__(self, stat='proportion', complementary=False):
         """Initialize the class with its parameters
 
         Parameters
@@ -412,33 +191,17 @@ class ECDF:
             If True, use the complementary CDF (1 - CDF)
 
         """
-        _check_argument("stat", ["count", "percent", "proportion"], stat)
+        _check_argument('stat', ['count', 'percent', 'proportion'], stat)
         self.stat = stat
         self.complementary = complementary
 
     def _eval_bivariate(self, x1, x2, weights):
         """Inner function for ECDF of two variables."""
-        raise NotImplementedError("Bivariate ECDF is not implemented")
+        pass
 
     def _eval_univariate(self, x, weights):
         """Inner function for ECDF of one variable."""
-        sorter = x.argsort()
-        x = x[sorter]
-        weights = weights[sorter]
-        y = weights.cumsum()
-
-        if self.stat in ["percent", "proportion"]:
-            y = y / y.max()
-        if self.stat == "percent":
-            y = y * 100
-
-        x = np.r_[-np.inf, x]
-        y = np.r_[0, y]
-
-        if self.complementary:
-            y = y.max() - y
-
-        return y, x
+        pass
 
     def __call__(self, x1, x2=None, weights=None):
         """Return proportion or count of observations below each sorted datapoint."""
@@ -447,12 +210,10 @@ class ECDF:
             weights = np.ones_like(x1)
         else:
             weights = np.asarray(weights)
-
         if x2 is None:
             return self._eval_univariate(x1, weights)
         else:
             return self._eval_bivariate(x1, x2, weights)
-
 
 class EstimateAggregator:
 
@@ -474,51 +235,37 @@ class EstimateAggregator:
 
         """
         self.estimator = estimator
-
         method, level = _validate_errorbar_arg(errorbar)
         self.error_method = method
         self.error_level = level
-
         self.boot_kws = boot_kws
 
     def __call__(self, data, var):
         """Aggregate over `var` column of `data` with estimate and error interval."""
         vals = data[var]
         if callable(self.estimator):
-            # You would think we could pass to vals.agg, and yet:
-            # https://github.com/mwaskom/seaborn/issues/2943
             estimate = self.estimator(vals)
         else:
             estimate = vals.agg(self.estimator)
-
-        # Options that produce no error bars
         if self.error_method is None:
             err_min = err_max = np.nan
         elif len(data) <= 1:
             err_min = err_max = np.nan
-
-        # Generic errorbars from user-supplied function
         elif callable(self.error_method):
             err_min, err_max = self.error_method(vals)
-
-        # Parametric options
-        elif self.error_method == "sd":
+        elif self.error_method == 'sd':
             half_interval = vals.std() * self.error_level
-            err_min, err_max = estimate - half_interval, estimate + half_interval
-        elif self.error_method == "se":
+            err_min, err_max = (estimate - half_interval, estimate + half_interval)
+        elif self.error_method == 'se':
             half_interval = vals.sem() * self.error_level
-            err_min, err_max = estimate - half_interval, estimate + half_interval
-
-        # Nonparametric options
-        elif self.error_method == "pi":
+            err_min, err_max = (estimate - half_interval, estimate + half_interval)
+        elif self.error_method == 'pi':
             err_min, err_max = _percentile_interval(vals, self.error_level)
-        elif self.error_method == "ci":
-            units = data.get("units", None)
+        elif self.error_method == 'ci':
+            units = data.get('units', None)
             boots = bootstrap(vals, units=units, func=self.estimator, **self.boot_kws)
             err_min, err_max = _percentile_interval(boots, self.error_level)
-
-        return pd.Series({var: estimate, f"{var}min": err_min, f"{var}max": err_max})
-
+        return pd.Series({var: estimate, f'{var}min': err_min, f'{var}max': err_max})
 
 class WeightedAggregator:
 
@@ -538,43 +285,30 @@ class WeightedAggregator:
             Additional keywords are passed to bootstrap when error_method is "ci".
 
         """
-        if estimator != "mean":
-            # Note that, while other weighted estimators may make sense (e.g. median),
-            # I'm not aware of an implementation in our dependencies. We can add one
-            # in seaborn later, if there is sufficient interest. For now, limit to mean.
+        if estimator != 'mean':
             raise ValueError(f"Weighted estimator must be 'mean', not {estimator!r}.")
         self.estimator = estimator
-
         method, level = _validate_errorbar_arg(errorbar)
-        if method is not None and method != "ci":
-            # As with the estimator, weighted 'sd' or 'pi' error bars may make sense.
-            # But we'll keep things simple for now and limit to (bootstrap) CI.
+        if method is not None and method != 'ci':
             raise ValueError(f"Error bar method must be 'ci', not {method!r}.")
         self.error_method = method
         self.error_level = level
-
         self.boot_kws = boot_kws
 
     def __call__(self, data, var):
         """Aggregate over `var` column of `data` with estimate and error interval."""
         vals = data[var]
-        weights = data["weight"]
-
+        weights = data['weight']
         estimate = np.average(vals, weights=weights)
-
-        if self.error_method == "ci" and len(data) > 1:
+        if self.error_method == 'ci' and len(data) > 1:
 
             def error_func(x, w):
                 return np.average(x, weights=w)
-
             boots = bootstrap(vals, weights, func=error_func, **self.boot_kws)
             err_min, err_max = _percentile_interval(boots, self.error_level)
-
         else:
             err_min = err_max = np.nan
-
-        return pd.Series({var: estimate, f"{var}min": err_min, f"{var}max": err_max})
-
+        return pd.Series({var: estimate, f'{var}min': err_min, f'{var}max': err_max})
 
 class LetterValues:
 
@@ -602,97 +336,34 @@ class LetterValues:
         https://vita.had.co.nz/papers/letter-value-plot.pdf
 
         """
-        k_options = ["tukey", "proportion", "trustworthy", "full"]
+        k_options = ['tukey', 'proportion', 'trustworthy', 'full']
         if isinstance(k_depth, str):
-            _check_argument("k_depth", k_options, k_depth)
+            _check_argument('k_depth', k_options, k_depth)
         elif not isinstance(k_depth, int):
-            err = (
-                "The `k_depth` parameter must be either an integer or string "
-                f"(one of {k_options}), not {k_depth!r}."
-            )
+            err = f'The `k_depth` parameter must be either an integer or string (one of {k_options}), not {k_depth!r}.'
             raise TypeError(err)
-
         self.k_depth = k_depth
         self.outlier_prop = outlier_prop
         self.trust_alpha = trust_alpha
 
-    def _compute_k(self, n):
-
-        # Select the depth, i.e. number of boxes to draw, based on the method
-        if self.k_depth == "full":
-            # extend boxes to 100% of the data
-            k = int(np.log2(n)) + 1
-        elif self.k_depth == "tukey":
-            # This results with 5-8 points in each tail
-            k = int(np.log2(n)) - 3
-        elif self.k_depth == "proportion":
-            k = int(np.log2(n)) - int(np.log2(n * self.outlier_prop)) + 1
-        elif self.k_depth == "trustworthy":
-            normal_quantile_func = np.vectorize(NormalDist().inv_cdf)
-            point_conf = 2 * normal_quantile_func(1 - self.trust_alpha / 2) ** 2
-            k = int(np.log2(n / point_conf)) + 1
-        else:
-            # Allow having k directly specified as input
-            k = int(self.k_depth)
-
-        return max(k, 1)
-
     def __call__(self, x):
         """Evaluate the letter values."""
         k = self._compute_k(len(x))
-        exp = np.arange(k + 1, 1, -1), np.arange(2, k + 2)
+        exp = (np.arange(k + 1, 1, -1), np.arange(2, k + 2))
         levels = k + 1 - np.concatenate([exp[0], exp[1][1:]])
         percentiles = 100 * np.concatenate([0.5 ** exp[0], 1 - 0.5 ** exp[1]])
-        if self.k_depth == "full":
+        if self.k_depth == 'full':
             percentiles[0] = 0
             percentiles[-1] = 100
         values = np.percentile(x, percentiles)
         fliers = np.asarray(x[(x < values.min()) | (x > values.max())])
         median = np.percentile(x, 50)
-
-        return {
-            "k": k,
-            "levels": levels,
-            "percs": percentiles,
-            "values": values,
-            "fliers": fliers,
-            "median": median,
-        }
-
+        return {'k': k, 'levels': levels, 'percs': percentiles, 'values': values, 'fliers': fliers, 'median': median}
 
 def _percentile_interval(data, width):
     """Return a percentile interval from data of a given width."""
-    edge = (100 - width) / 2
-    percentiles = edge, 100 - edge
-    return np.nanpercentile(data, percentiles)
-
+    pass
 
 def _validate_errorbar_arg(arg):
     """Check type and value of errorbar argument and assign default level."""
-    DEFAULT_LEVELS = {
-        "ci": 95,
-        "pi": 95,
-        "se": 1,
-        "sd": 1,
-    }
-
-    usage = "`errorbar` must be a callable, string, or (string, number) tuple"
-
-    if arg is None:
-        return None, None
-    elif callable(arg):
-        return arg, None
-    elif isinstance(arg, str):
-        method = arg
-        level = DEFAULT_LEVELS.get(method, None)
-    else:
-        try:
-            method, level = arg
-        except (ValueError, TypeError) as err:
-            raise err.__class__(usage) from err
-
-    _check_argument("errorbar", list(DEFAULT_LEVELS), method)
-    if level is not None and not isinstance(level, Number):
-        raise TypeError(usage)
-
-    return method, level
+    pass

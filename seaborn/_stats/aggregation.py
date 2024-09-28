@@ -1,19 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar, Callable
-
 import pandas as pd
 from pandas import DataFrame
-
 from seaborn._core.scales import Scale
 from seaborn._core.groupby import GroupBy
 from seaborn._stats.base import Stat
-from seaborn._statistics import (
-    EstimateAggregator,
-    WeightedAggregator,
-)
+from seaborn._statistics import EstimateAggregator, WeightedAggregator
 from seaborn._core.typing import Vector
-
 
 @dataclass
 class Agg(Stat):
@@ -34,23 +28,13 @@ class Agg(Stat):
     .. include:: ../docstrings/objects.Agg.rst
 
     """
-    func: str | Callable[[Vector], float] = "mean"
-
+    func: str | Callable[[Vector], float] = 'mean'
     group_by_orient: ClassVar[bool] = True
 
-    def __call__(
-        self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale],
-    ) -> DataFrame:
-
-        var = {"x": "y", "y": "x"}.get(orient)
-        res = (
-            groupby
-            .agg(data, {var: self.func})
-            .dropna(subset=[var])
-            .reset_index(drop=True)
-        )
+    def __call__(self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale]) -> DataFrame:
+        var = {'x': 'y', 'y': 'x'}.get(orient)
+        res = groupby.agg(data, {var: self.func}).dropna(subset=[var]).reset_index(drop=True)
         return res
-
 
 @dataclass
 class Est(Stat):
@@ -84,43 +68,22 @@ class Est(Stat):
     .. include:: ../docstrings/objects.Est.rst
 
     """
-    func: str | Callable[[Vector], float] = "mean"
-    errorbar: str | tuple[str, float] = ("ci", 95)
+    func: str | Callable[[Vector], float] = 'mean'
+    errorbar: str | tuple[str, float] = ('ci', 95)
     n_boot: int = 1000
     seed: int | None = None
-
     group_by_orient: ClassVar[bool] = True
 
-    def _process(
-        self, data: DataFrame, var: str, estimator: EstimateAggregator
-    ) -> DataFrame:
-        # Needed because GroupBy.apply assumes func is DataFrame -> DataFrame
-        # which we could probably make more general to allow Series return
-        res = estimator(data, var)
-        return pd.DataFrame([res])
-
-    def __call__(
-        self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale],
-    ) -> DataFrame:
-
-        boot_kws = {"n_boot": self.n_boot, "seed": self.seed}
-        if "weight" in data:
+    def __call__(self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale]) -> DataFrame:
+        boot_kws = {'n_boot': self.n_boot, 'seed': self.seed}
+        if 'weight' in data:
             engine = WeightedAggregator(self.func, self.errorbar, **boot_kws)
         else:
             engine = EstimateAggregator(self.func, self.errorbar, **boot_kws)
-
-        var = {"x": "y", "y": "x"}[orient]
-        res = (
-            groupby
-            .apply(data, self._process, var, engine)
-            .dropna(subset=[var])
-            .reset_index(drop=True)
-        )
-
-        res = res.fillna({f"{var}min": res[var], f"{var}max": res[var]})
-
+        var = {'x': 'y', 'y': 'x'}[orient]
+        res = groupby.apply(data, self._process, var, engine).dropna(subset=[var]).reset_index(drop=True)
+        res = res.fillna({f'{var}min': res[var], f'{var}max': res[var]})
         return res
-
 
 @dataclass
 class Rolling(Stat):

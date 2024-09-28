@@ -1,19 +1,15 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
-
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-
 from seaborn._core.groupby import GroupBy
 from seaborn._core.scales import Scale
 from seaborn._stats.base import Stat
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from numpy.typing import ArrayLike
-
 
 @dataclass
 class Count(Stat):
@@ -31,19 +27,10 @@ class Count(Stat):
     """
     group_by_orient: ClassVar[bool] = True
 
-    def __call__(
-        self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale],
-    ) -> DataFrame:
-
-        var = {"x": "y", "y": "x"}[orient]
-        res = (
-            groupby
-            .agg(data.assign(**{var: data[orient]}), {var: len})
-            .dropna(subset=["x", "y"])
-            .reset_index(drop=True)
-        )
+    def __call__(self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale]) -> DataFrame:
+        var = {'x': 'y', 'y': 'x'}[orient]
+        res = groupby.agg(data.assign(**{var: data[orient]}), {var: len}).dropna(subset=['x', 'y']).reset_index(drop=True)
         return res
-
 
 @dataclass
 class Hist(Stat):
@@ -104,8 +91,8 @@ class Hist(Stat):
     .. include:: ../docstrings/objects.Hist.rst
 
     """
-    stat: str = "count"
-    bins: str | int | ArrayLike = "auto"
+    stat: str = 'count'
+    bins: str | int | ArrayLike = 'auto'
     binwidth: float | None = None
     binrange: tuple[float, float] | None = None
     common_norm: bool | list[str] = True
@@ -114,94 +101,18 @@ class Hist(Stat):
     discrete: bool = False
 
     def __post_init__(self):
-
-        stat_options = [
-            "count", "density", "percent", "probability", "proportion", "frequency"
-        ]
-        self._check_param_one_of("stat", stat_options)
+        stat_options = ['count', 'density', 'percent', 'probability', 'proportion', 'frequency']
+        self._check_param_one_of('stat', stat_options)
 
     def _define_bin_edges(self, vals, weight, bins, binwidth, binrange, discrete):
         """Inner function that takes bin parameters as arguments."""
-        vals = vals.replace(-np.inf, np.nan).replace(np.inf, np.nan).dropna()
-
-        if binrange is None:
-            start, stop = vals.min(), vals.max()
-        else:
-            start, stop = binrange
-
-        if discrete:
-            bin_edges = np.arange(start - .5, stop + 1.5)
-        else:
-            if binwidth is not None:
-                bins = int(round((stop - start) / binwidth))
-            bin_edges = np.histogram_bin_edges(vals, bins, binrange, weight)
-
-        # TODO warning or cap on too many bins?
-
-        return bin_edges
+        pass
 
     def _define_bin_params(self, data, orient, scale_type):
         """Given data, return numpy.histogram parameters to define bins."""
-        vals = data[orient]
-        weights = data.get("weight", None)
+        pass
 
-        # TODO We'll want this for ordinal / discrete scales too
-        # (Do we need discrete as a parameter or just infer from scale?)
-        discrete = self.discrete or scale_type == "nominal"
-
-        bin_edges = self._define_bin_edges(
-            vals, weights, self.bins, self.binwidth, self.binrange, discrete,
-        )
-
-        if isinstance(self.bins, (str, int)):
-            n_bins = len(bin_edges) - 1
-            bin_range = bin_edges.min(), bin_edges.max()
-            bin_kws = dict(bins=n_bins, range=bin_range)
-        else:
-            bin_kws = dict(bins=bin_edges)
-
-        return bin_kws
-
-    def _get_bins_and_eval(self, data, orient, groupby, scale_type):
-
-        bin_kws = self._define_bin_params(data, orient, scale_type)
-        return groupby.apply(data, self._eval, orient, bin_kws)
-
-    def _eval(self, data, orient, bin_kws):
-
-        vals = data[orient]
-        weights = data.get("weight", None)
-
-        density = self.stat == "density"
-        hist, edges = np.histogram(vals, **bin_kws, weights=weights, density=density)
-
-        width = np.diff(edges)
-        center = edges[:-1] + width / 2
-
-        return pd.DataFrame({orient: center, "count": hist, "space": width})
-
-    def _normalize(self, data):
-
-        hist = data["count"]
-        if self.stat == "probability" or self.stat == "proportion":
-            hist = hist.astype(float) / hist.sum()
-        elif self.stat == "percent":
-            hist = hist.astype(float) / hist.sum() * 100
-        elif self.stat == "frequency":
-            hist = hist.astype(float) / data["space"]
-
-        if self.cumulative:
-            if self.stat in ["density", "frequency"]:
-                hist = (hist * data["space"]).cumsum()
-            else:
-                hist = hist.cumsum()
-
-        return data.assign(**{self.stat: hist})
-
-    def __call__(
-        self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale],
-    ) -> DataFrame:
-
+    def __call__(self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale]) -> DataFrame:
         scale_type = scales[orient].__class__.__name__.lower()
         grouping_vars = [str(v) for v in data if v in groupby.order]
         if not grouping_vars or self.common_bins is True:
@@ -212,12 +123,8 @@ class Hist(Stat):
                 bin_groupby = GroupBy(grouping_vars)
             else:
                 bin_groupby = GroupBy(self.common_bins)
-                self._check_grouping_vars("common_bins", grouping_vars)
-
-            data = bin_groupby.apply(
-                data, self._get_bins_and_eval, orient, groupby, scale_type,
-            )
-
+                self._check_grouping_vars('common_bins', grouping_vars)
+            data = bin_groupby.apply(data, self._get_bins_and_eval, orient, groupby, scale_type)
         if not grouping_vars or self.common_norm is True:
             data = self._normalize(data)
         else:
@@ -225,8 +132,7 @@ class Hist(Stat):
                 norm_groupby = GroupBy(grouping_vars)
             else:
                 norm_groupby = GroupBy(self.common_norm)
-                self._check_grouping_vars("common_norm", grouping_vars)
+                self._check_grouping_vars('common_norm', grouping_vars)
             data = norm_groupby.apply(data, self._normalize)
-
-        other = {"x": "y", "y": "x"}[orient]
+        other = {'x': 'y', 'y': 'x'}[orient]
         return data.assign(**{other: data[self.stat]})

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
-
 import numpy as np
 from numpy import ndarray
 import pandas as pd
@@ -12,11 +11,9 @@ try:
 except ImportError:
     from seaborn.external.kde import gaussian_kde
     _no_scipy = True
-
 from seaborn._core.groupby import GroupBy
 from seaborn._core.scales import Scale
 from seaborn._stats.base import Stat
-
 
 @dataclass
 class KDE(Stat):
@@ -84,7 +81,7 @@ class KDE(Stat):
 
     """
     bw_adjust: float = 1
-    bw_method: str | float | Callable[[gaussian_kde], float] = "scott"
+    bw_method: str | float | Callable[[gaussian_kde], float] = 'scott'
     common_norm: bool | list[str] = True
     common_grid: bool | list[str] = True
     gridsize: int | None = 200
@@ -92,92 +89,33 @@ class KDE(Stat):
     cumulative: bool = False
 
     def __post_init__(self):
-
         if self.cumulative and _no_scipy:
-            raise RuntimeError("Cumulative KDE evaluation requires scipy")
+            raise RuntimeError('Cumulative KDE evaluation requires scipy')
 
     def _check_var_list_or_boolean(self, param: str, grouping_vars: Any) -> None:
         """Do input checks on grouping parameters."""
-        value = getattr(self, param)
-        if not (
-            isinstance(value, bool)
-            or (isinstance(value, list) and all(isinstance(v, str) for v in value))
-        ):
-            param_name = f"{self.__class__.__name__}.{param}"
-            raise TypeError(f"{param_name} must be a boolean or list of strings.")
-        self._check_grouping_vars(param, grouping_vars, stacklevel=3)
+        pass
 
     def _fit(self, data: DataFrame, orient: str) -> gaussian_kde:
         """Fit and return a KDE object."""
-        # TODO need to handle singular data
-
-        fit_kws: dict[str, Any] = {"bw_method": self.bw_method}
-        if "weight" in data:
-            fit_kws["weights"] = data["weight"]
-        kde = gaussian_kde(data[orient], **fit_kws)
-        kde.set_bandwidth(kde.factor * self.bw_adjust)
-
-        return kde
+        pass
 
     def _get_support(self, data: DataFrame, orient: str) -> ndarray:
         """Define the grid that the KDE will be evaluated on."""
-        if self.gridsize is None:
-            return data[orient].to_numpy()
+        pass
 
-        kde = self._fit(data, orient)
-        bw = np.sqrt(kde.covariance.squeeze())
-        gridmin = data[orient].min() - bw * self.cut
-        gridmax = data[orient].max() + bw * self.cut
-        return np.linspace(gridmin, gridmax, self.gridsize)
-
-    def _fit_and_evaluate(
-        self, data: DataFrame, orient: str, support: ndarray
-    ) -> DataFrame:
+    def _fit_and_evaluate(self, data: DataFrame, orient: str, support: ndarray) -> DataFrame:
         """Transform single group by fitting a KDE and evaluating on a support grid."""
-        empty = pd.DataFrame(columns=[orient, "weight", "density"], dtype=float)
-        if len(data) < 2:
-            return empty
-        try:
-            kde = self._fit(data, orient)
-        except np.linalg.LinAlgError:
-            return empty
+        pass
 
-        if self.cumulative:
-            s_0 = support[0]
-            density = np.array([kde.integrate_box_1d(s_0, s_i) for s_i in support])
-        else:
-            density = kde(support)
-
-        weight = data["weight"].sum()
-        return pd.DataFrame({orient: support, "weight": weight, "density": density})
-
-    def _transform(
-        self, data: DataFrame, orient: str, grouping_vars: list[str]
-    ) -> DataFrame:
+    def _transform(self, data: DataFrame, orient: str, grouping_vars: list[str]) -> DataFrame:
         """Transform multiple groups by fitting KDEs and evaluating."""
-        empty = pd.DataFrame(columns=[*data.columns, "density"], dtype=float)
-        if len(data) < 2:
-            return empty
-        try:
-            support = self._get_support(data, orient)
-        except np.linalg.LinAlgError:
-            return empty
+        pass
 
-        grouping_vars = [x for x in grouping_vars if data[x].nunique() > 1]
-        if not grouping_vars:
-            return self._fit_and_evaluate(data, orient, support)
-        groupby = GroupBy(grouping_vars)
-        return groupby.apply(data, self._fit_and_evaluate, orient, support)
-
-    def __call__(
-        self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale],
-    ) -> DataFrame:
-
-        if "weight" not in data:
+    def __call__(self, data: DataFrame, groupby: GroupBy, orient: str, scales: dict[str, Scale]) -> DataFrame:
+        if 'weight' not in data:
             data = data.assign(weight=1)
-        data = data.dropna(subset=[orient, "weight"])
-
-        # Transform each group separately
+        data = data.dropna(subset=[orient, 'weight'])
         grouping_vars = [str(v) for v in data if v in groupby.order]
         if not grouping_vars or self.common_grid is True:
             res = self._transform(data, orient, grouping_vars)
@@ -185,30 +123,19 @@ class KDE(Stat):
             if self.common_grid is False:
                 grid_vars = grouping_vars
             else:
-                self._check_var_list_or_boolean("common_grid", grouping_vars)
+                self._check_var_list_or_boolean('common_grid', grouping_vars)
                 grid_vars = [v for v in self.common_grid if v in grouping_vars]
-
-            res = (
-                GroupBy(grid_vars)
-                .apply(data, self._transform, orient, grouping_vars)
-            )
-
-        # Normalize, potentially within groups
+            res = GroupBy(grid_vars).apply(data, self._transform, orient, grouping_vars)
         if not grouping_vars or self.common_norm is True:
-            res = res.assign(group_weight=data["weight"].sum())
+            res = res.assign(group_weight=data['weight'].sum())
         else:
             if self.common_norm is False:
                 norm_vars = grouping_vars
             else:
-                self._check_var_list_or_boolean("common_norm", grouping_vars)
+                self._check_var_list_or_boolean('common_norm', grouping_vars)
                 norm_vars = [v for v in self.common_norm if v in grouping_vars]
-
-            res = res.join(
-                data.groupby(norm_vars)["weight"].sum().rename("group_weight"),
-                on=norm_vars,
-            )
-
-        res["density"] *= res.eval("weight / group_weight")
-        value = {"x": "y", "y": "x"}[orient]
-        res[value] = res["density"]
-        return res.drop(["weight", "group_weight"], axis=1)
+            res = res.join(data.groupby(norm_vars)['weight'].sum().rename('group_weight'), on=norm_vars)
+        res['density'] *= res.eval('weight / group_weight')
+        value = {'x': 'y', 'y': 'x'}[orient]
+        res[value] = res['density']
+        return res.drop(['weight', 'group_weight'], axis=1)

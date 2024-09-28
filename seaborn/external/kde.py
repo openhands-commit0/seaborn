@@ -49,34 +49,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-
-# -------------------------------------------------------------------------------
-#
-#  Define classes for (uni/multi)-variate kernel density estimation.
-#
-#  Currently, only Gaussian kernels are implemented.
-#
-#  Written by: Robert Kern
-#
-#  Date: 2004-08-09
-#
-#  Modified: 2005-02-10 by Robert Kern.
-#              Contributed to SciPy
-#            2005-10-07 by Robert Kern.
-#              Some fixes to match the new scipy_core
-#
-#  Copyright 2004-2005 by Enthought, Inc.
-#
-# -------------------------------------------------------------------------------
-
 import numpy as np
-from numpy import (asarray, atleast_2d, reshape, zeros, newaxis, dot, exp, pi,
-                   sqrt, power, atleast_1d, sum, ones, cov)
+from numpy import asarray, atleast_2d, reshape, zeros, newaxis, dot, exp, pi, sqrt, power, atleast_1d, sum, ones, cov
 from numpy import linalg
-
-
 __all__ = ['gaussian_kde']
-
 
 class gaussian_kde:
     """Representation of a kernel-density estimate using Gaussian kernels.
@@ -191,22 +167,20 @@ class gaussian_kde:
            Series A (General), 132, 272
 
     """
+
     def __init__(self, dataset, bw_method=None, weights=None):
         self.dataset = atleast_2d(asarray(dataset))
         if not self.dataset.size > 1:
-            raise ValueError("`dataset` input should have multiple elements.")
-
+            raise ValueError('`dataset` input should have multiple elements.')
         self.d, self.n = self.dataset.shape
-
         if weights is not None:
             self._weights = atleast_1d(weights).astype(float)
             self._weights /= sum(self._weights)
             if self.weights.ndim != 1:
-                raise ValueError("`weights` input should be one-dimensional.")
+                raise ValueError('`weights` input should be one-dimensional.')
             if len(self._weights) != self.n:
-                raise ValueError("`weights` input should be of length n")
-            self._neff = 1/sum(self._weights**2)
-
+                raise ValueError('`weights` input should be of length n')
+            self._neff = 1 / sum(self._weights ** 2)
         self.set_bandwidth(bw_method=bw_method)
 
     def evaluate(self, points):
@@ -229,42 +203,7 @@ class gaussian_kde:
                      the dimensionality of the KDE.
 
         """
-        points = atleast_2d(asarray(points))
-
-        d, m = points.shape
-        if d != self.d:
-            if d == 1 and m == self.d:
-                # points was passed in as a row vector
-                points = reshape(points, (self.d, 1))
-                m = 1
-            else:
-                msg = f"points have dimension {d}, dataset has dimension {self.d}"
-                raise ValueError(msg)
-
-        output_dtype = np.common_type(self.covariance, points)
-        result = zeros((m,), dtype=output_dtype)
-
-        whitening = linalg.cholesky(self.inv_cov)
-        scaled_dataset = dot(whitening, self.dataset)
-        scaled_points = dot(whitening, points)
-
-        if m >= self.n:
-            # there are more points than data, so loop over data
-            for i in range(self.n):
-                diff = scaled_dataset[:, i, newaxis] - scaled_points
-                energy = sum(diff * diff, axis=0) / 2.0
-                result += self.weights[i]*exp(-energy)
-        else:
-            # loop over points
-            for i in range(m):
-                diff = scaled_dataset - scaled_points[:, i, newaxis]
-                energy = sum(diff * diff, axis=0) / 2.0
-                result[i] = sum(exp(-energy)*self.weights, axis=0)
-
-        result = result / self._norm_factor
-
-        return result
-
+        pass
     __call__ = evaluate
 
     def scotts_factor(self):
@@ -275,7 +214,7 @@ class gaussian_kde:
         s : float
             Scott's factor.
         """
-        return power(self.neff, -1./(self.d+4))
+        pass
 
     def silverman_factor(self):
         """Compute the Silverman factor.
@@ -285,15 +224,9 @@ class gaussian_kde:
         s : float
             The silverman factor.
         """
-        return power(self.neff*(self.d+2.0)/4.0, -1./(self.d+4))
-
-    #  Default method to calculate bandwidth, can be overwritten by subclass
+        pass
     covariance_factor = scotts_factor
-    covariance_factor.__doc__ = """Computes the coefficient (`kde.factor`) that
-        multiplies the data covariance matrix to obtain the kernel covariance
-        matrix. The default is `scotts_factor`.  A subclass can overwrite this
-        method to provide a different method, or set it through a call to
-        `kde.set_bandwidth`."""
+    covariance_factor.__doc__ = 'Computes the coefficient (`kde.factor`) that\n        multiplies the data covariance matrix to obtain the kernel covariance\n        matrix. The default is `scotts_factor`.  A subclass can overwrite this\n        method to provide a different method, or set it through a call to\n        `kde.set_bandwidth`.'
 
     def set_bandwidth(self, bw_method=None):
         """Compute the estimator bandwidth with given method.
@@ -316,40 +249,13 @@ class gaussian_kde:
         .. versionadded:: 0.11
 
         """
-        if bw_method is None:
-            pass
-        elif bw_method == 'scott':
-            self.covariance_factor = self.scotts_factor
-        elif bw_method == 'silverman':
-            self.covariance_factor = self.silverman_factor
-        elif np.isscalar(bw_method) and not isinstance(bw_method, str):
-            self._bw_method = 'use constant'
-            self.covariance_factor = lambda: bw_method
-        elif callable(bw_method):
-            self._bw_method = bw_method
-            self.covariance_factor = lambda: self._bw_method(self)
-        else:
-            msg = "`bw_method` should be 'scott', 'silverman', a scalar " \
-                  "or a callable."
-            raise ValueError(msg)
-
-        self._compute_covariance()
+        pass
 
     def _compute_covariance(self):
         """Computes the covariance matrix for each Gaussian kernel using
         covariance_factor().
         """
-        self.factor = self.covariance_factor()
-        # Cache covariance and inverse covariance of the data
-        if not hasattr(self, '_data_inv_cov'):
-            self._data_covariance = atleast_2d(cov(self.dataset, rowvar=1,
-                                               bias=False,
-                                               aweights=self.weights))
-            self._data_inv_cov = linalg.inv(self._data_covariance)
-
-        self.covariance = self._data_covariance * self.factor**2
-        self.inv_cov = self._data_inv_cov / self.factor**2
-        self._norm_factor = sqrt(linalg.det(2*pi*self.covariance))
+        pass
 
     def pdf(self, x):
         """
@@ -361,20 +267,4 @@ class gaussian_kde:
         docstring for more details.
 
         """
-        return self.evaluate(x)
-
-    @property
-    def weights(self):
-        try:
-            return self._weights
-        except AttributeError:
-            self._weights = ones(self.n)/self.n
-            return self._weights
-
-    @property
-    def neff(self):
-        try:
-            return self._neff
-        except AttributeError:
-            self._neff = 1/sum(self.weights**2)
-            return self._neff
+        pass
