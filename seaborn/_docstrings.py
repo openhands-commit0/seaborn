@@ -41,7 +41,15 @@ class DocstringComponents:
                 entries[key] = val.entries
             else:
                 entries[key] = val
-        return cls(entries)
+        # Create a flattened dictionary with dot notation keys
+        flattened = {}
+        for key, val in entries.items():
+            if isinstance(val, dict):
+                for subkey, subval in val.items():
+                    flattened[f"{key}.{subkey}"] = subval
+            else:
+                flattened[key] = val
+        return cls(flattened)
 
     @classmethod
     def from_function_params(cls, func):
