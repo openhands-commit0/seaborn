@@ -366,3 +366,15 @@ def _disable_autolayout():
 def _version_predates(lib: ModuleType, version: str) -> bool:
     """Helper function for checking version compatibility."""
     pass
+
+def _scatter_legend_artist(color, marker, markersize, alpha=None, markeredgecolor=None):
+    """Create a legend artist with a colored scatter marker."""
+    import matplotlib.lines as mlines
+    handle = mlines.Line2D([], [], 
+                          color=color,
+                          marker=marker,
+                          markersize=markersize,
+                          alpha=alpha,
+                          markeredgecolor=markeredgecolor,
+                          linestyle="")
+    return handle
