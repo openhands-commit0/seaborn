@@ -10,11 +10,14 @@ class DocstringComponents:
         if strip_whitespace:
             entries = {}
             for key, val in comp_dict.items():
-                m = re.match(self.regexp, val)
-                if m is None:
-                    entries[key] = val
+                if isinstance(val, dict):
+                    entries[key] = DocstringComponents(val, strip_whitespace).entries
                 else:
-                    entries[key] = m.group(1)
+                    m = re.match(self.regexp, val)
+                    if m is None:
+                        entries[key] = val
+                    else:
+                        entries[key] = m.group(1)
         else:
             entries = comp_dict.copy()
         self.entries = entries
