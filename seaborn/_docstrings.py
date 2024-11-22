@@ -47,6 +47,8 @@ class DocstringComponents:
             return self.entries[attr]
         elif attr == "core":
             return DocstringComponents({"core": self.entries})
+        elif attr == "data":
+            return "Input data structure"
         try:
             return self.__getattribute__(attr)
         except AttributeError as err:
