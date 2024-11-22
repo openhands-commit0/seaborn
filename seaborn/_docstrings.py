@@ -52,6 +52,8 @@ class DocstringComponents:
                     if key in self.entries:
                         if isinstance(self.entries[key], dict):
                             return getattr(DocstringComponents(self.entries[key]), subkey)
+                        elif isinstance(self.entries[key], str):
+                            return self.entries[key]
                 raise err
             else:
                 pass
