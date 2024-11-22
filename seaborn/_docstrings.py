@@ -25,7 +25,9 @@ class DocstringComponents:
     def __getattr__(self, attr):
         """Provide dot access to entries for clean raw docstrings."""
         if attr in self.entries:
-            if isinstance(self.entries[attr], dict):
+            if isinstance(self.entries[attr], DocstringComponents):
+                return self.entries[attr]
+            elif isinstance(self.entries[attr], dict):
                 return DocstringComponents(self.entries[attr])
             return self.entries[attr]
         else:
