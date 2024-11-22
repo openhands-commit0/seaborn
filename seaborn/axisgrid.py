@@ -15,7 +15,7 @@ from .utils import adjust_legend_subtitles, set_hls_values, _check_argument, _dr
 from .palettes import color_palette, blend_palette
 from ._docstrings import DocstringComponents, _core_docs
 __all__ = ['FacetGrid', 'PairGrid', 'JointGrid', 'pairplot', 'jointplot']
-_param_docs = DocstringComponents({"core": _core_docs['params'].entries})
+_param_docs = DocstringComponents.from_nested_components(core=_core_docs['params'])
 
 class _BaseGrid:
     """Base class for grids of subplots."""
