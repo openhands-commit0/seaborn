@@ -29,20 +29,26 @@ class DocstringComponents:
 
     def __getattr__(self, attr):
         """Provide dot access to entries for clean raw docstrings."""
-        if attr in self.entries:
+        if "." in attr:
+            key, subkey = attr.split(".", 1)
+            if key in self.entries:
+                if isinstance(self.entries[key], DocstringComponents):
+                    return getattr(self.entries[key], subkey)
+                elif isinstance(self.entries[key], dict):
+                    return getattr(DocstringComponents(self.entries[key]), subkey)
+        elif attr in self.entries:
             if isinstance(self.entries[attr], DocstringComponents):
                 return self.entries[attr]
             elif isinstance(self.entries[attr], dict):
                 return DocstringComponents(self.entries[attr])
             return self.entries[attr]
-        else:
-            try:
-                return self.__getattribute__(attr)
-            except AttributeError as err:
-                if __debug__:
-                    raise err
-                else:
-                    pass
+        try:
+            return self.__getattribute__(attr)
+        except AttributeError as err:
+            if __debug__:
+                raise err
+            else:
+                pass
 
     @classmethod
     def from_nested_components(cls, **kwargs):
