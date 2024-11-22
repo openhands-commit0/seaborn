@@ -11,7 +11,7 @@ class DocstringComponents:
             entries = {}
             for key, val in comp_dict.items():
                 if isinstance(val, dict):
-                    entries[key] = DocstringComponents(val, strip_whitespace).entries
+                    entries[key] = DocstringComponents(val, strip_whitespace)
                 else:
                     m = re.match(self.regexp, val)
                     if m is None:
