@@ -38,10 +38,10 @@ class DocstringComponents:
         entries = {}
         for key, val in kwargs.items():
             if isinstance(val, cls):
-                entries[key] = val.entries
+                entries[key] = val
             else:
-                entries[key] = cls(val).entries
-        return cls(entries)
+                entries[key] = cls(val)
+        return entries
 
     @classmethod
     def from_function_params(cls, func):
