@@ -25,7 +25,7 @@ class DocstringComponents:
             setattr(self, key, val)
             if isinstance(val, DocstringComponents):
                 for subkey, subval in val.entries.items():
-                    setattr(self, subkey, subval)
+                    setattr(self, f"{key}.{subkey}", subval)
 
     def __getattr__(self, attr):
         """Provide dot access to entries for clean raw docstrings."""
