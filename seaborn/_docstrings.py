@@ -37,25 +37,20 @@ class DocstringComponents:
                 elif isinstance(self.entries[key], dict):
                     return getattr(DocstringComponents(self.entries[key]), subkey)
                 return self.entries[key]
+            elif key == "core":
+                return getattr(DocstringComponents({"core": self.entries}), subkey)
         elif attr in self.entries:
             if isinstance(self.entries[attr], DocstringComponents):
                 return self.entries[attr]
             elif isinstance(self.entries[attr], dict):
                 return DocstringComponents(self.entries[attr])
             return self.entries[attr]
+        elif attr == "core":
+            return DocstringComponents({"core": self.entries})
         try:
             return self.__getattribute__(attr)
         except AttributeError as err:
             if __debug__:
-                if "." in attr:
-                    key, subkey = attr.split(".", 1)
-                    if key in self.entries:
-                        if isinstance(self.entries[key], dict):
-                            return getattr(DocstringComponents(self.entries[key]), subkey)
-                        elif isinstance(self.entries[key], str):
-                            return self.entries[key]
-                    elif key == "core":
-                        return getattr(DocstringComponents({"core": self.entries}), subkey)
                 raise err
             else:
                 pass
