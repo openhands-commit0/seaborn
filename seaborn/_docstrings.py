@@ -21,6 +21,8 @@ class DocstringComponents:
         else:
             entries = comp_dict.copy()
         self.entries = entries
+        for key, val in entries.items():
+            setattr(self, key, val)
 
     def __getattr__(self, attr):
         """Provide dot access to entries for clean raw docstrings."""
