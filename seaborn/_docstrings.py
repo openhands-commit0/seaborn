@@ -51,6 +51,10 @@ class DocstringComponents:
             return self.__getattribute__(attr)
         except AttributeError as err:
             if __debug__:
+                if "." in attr:
+                    key, subkey = attr.split(".", 1)
+                    if key == "core":
+                        return getattr(DocstringComponents({"core": self.entries}), subkey)
                 raise err
             else:
                 pass
