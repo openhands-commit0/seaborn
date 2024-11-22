@@ -36,6 +36,7 @@ class DocstringComponents:
                     return getattr(self.entries[key], subkey)
                 elif isinstance(self.entries[key], dict):
                     return getattr(DocstringComponents(self.entries[key]), subkey)
+                return self.entries[key]
         elif attr in self.entries:
             if isinstance(self.entries[attr], DocstringComponents):
                 return self.entries[attr]
